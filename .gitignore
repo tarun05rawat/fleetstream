@@ -1,0 +1,57 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+vendor/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.pnpm-debug.log*
+
+# React build
+/frontend/build
+/frontend/dist
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# Kubernetes
+*.kubeconfig
+
+# Temporary files
+tmp/
+temp/

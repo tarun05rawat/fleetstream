@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: factoryflow
+  labels:
+    app.kubernetes.io/name: factoryflow
+    app.kubernetes.io/version: "1.0.0"

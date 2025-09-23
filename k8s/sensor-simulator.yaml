@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-simulator-config
+  namespace: factoryflow
+data:
+  KAFKA_BROKERS: "kafka-service:9092"
+  KAFKA_TOPIC: "line1.sensor"
+  MACHINE_ID: "sensor_hub_001"
+  SENSOR_FREQUENCY: "100"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-simulator
+  namespace: factoryflow
+  labels:
+    app: sensor-simulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensor-simulator
+  template:
+    metadata:
+      labels:
+        app: sensor-simulator
+    spec:
+      containers:
+      - name: sensor-simulator
+        image: factoryflow/sensor-simulator:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: sensor-simulator-config
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep sensor-simulator"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep sensor-simulator"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      restartPolicy: Always
+
+---
+# Additional sensor simulators for different machines
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-simulator-conveyor
+  namespace: factoryflow
+  labels:
+    app: sensor-simulator-conveyor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensor-simulator-conveyor
+  template:
+    metadata:
+      labels:
+        app: sensor-simulator-conveyor
+    spec:
+      containers:
+      - name: sensor-simulator
+        image: factoryflow/sensor-simulator:latest
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_BROKERS
+          value: "kafka-service:9092"
+        - name: KAFKA_TOPIC
+          value: "line1.sensor"
+        - name: MACHINE_ID
+          value: "conveyor_001"
+        - name: SENSOR_FREQUENCY
+          value: "100"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-simulator-robot
+  namespace: factoryflow
+  labels:
+    app: sensor-simulator-robot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensor-simulator-robot
+  template:
+    metadata:
+      labels:
+        app: sensor-simulator-robot
+    spec:
+      containers:
+      - name: sensor-simulator
+        image: factoryflow/sensor-simulator:latest
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_BROKERS
+          value: "kafka-service:9092"
+        - name: KAFKA_TOPIC
+          value: "line1.sensor"
+        - name: MACHINE_ID
+          value: "robot_arm_001"
+        - name: SENSOR_FREQUENCY
+          value: "100"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"

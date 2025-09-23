@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: factoryflow
+
+resources:
+- namespace.yaml
+- postgres.yaml
+- kafka.yaml
+- sensor-simulator.yaml
+- backend.yaml
+- frontend.yaml
+
+commonLabels:
+  app.kubernetes.io/name: factoryflow
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: microservice
+
+images:
+- name: factoryflow/sensor-simulator
+  newTag: latest
+- name: factoryflow/backend
+  newTag: latest
+- name: factoryflow/frontend
+  newTag: latest
+
+configMapGenerator:
+- name: common-config
+  literals:
+  - PROJECT_NAME=FactoryFlow
+  - VERSION=1.0.0
+  - ENVIRONMENT=production

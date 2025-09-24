@@ -4,18 +4,27 @@
   "private": true,
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/postcss": "^4.1.13",
     "@tailwindcss/typography": "^0.5.18",
     "@types/recharts": "^1.8.29",
     "@types/socket.io-client": "^1.4.36",
+    "autoprefixer": "^10.4.21",
     "axios": "^1.12.2",
     "cra-template-typescript": "1.3.0",
     "lucide-react": "^0.544.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "postcss": "^8.5.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-scripts": "5.0.1",
     "recharts": "^3.2.1",
     "socket.io-client": "^4.8.1",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^4.1.13",
+    "web-vitals": "^4.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.8",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.6.3"
   },
   "scripts": {
     "start": "react-scripts start",

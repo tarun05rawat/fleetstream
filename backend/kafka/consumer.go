@@ -2,52 +2,56 @@ package kafka
 
 import (
 	"backend/models"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
+	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/IBM/sarama"
 )
 
 // Consumer handles Kafka message consumption
 type Consumer struct {
-	consumer     *kafka.Consumer
+	consumerGroup sarama.ConsumerGroup
+	eventChannel  chan *models.SensorEvent
+	errorChannel  chan error
+	stopChannel   chan bool
+	ctx           context.Context
+	cancel        context.CancelFunc
+}
+
+// ConsumerGroupHandler implements sarama.ConsumerGroupHandler
+type ConsumerGroupHandler struct {
 	eventChannel chan *models.SensorEvent
 	errorChannel chan error
-	stopChannel  chan bool
 }
 
 // NewConsumer creates a new Kafka consumer
 func NewConsumer(brokers, groupID string, topics []string) (*Consumer, error) {
-	config := kafka.ConfigMap{
-		"bootstrap.servers":        brokers,
-		"group.id":                 groupID,
-		"auto.offset.reset":        "latest",
-		"enable.auto.commit":       true,
-		"auto.commit.interval.ms":  1000,
-		"session.timeout.ms":       30000,
-		"heartbeat.interval.ms":    3000,
-		"max.poll.interval.ms":     300000,
-		"fetch.min.bytes":          1,
-		"fetch.wait.max.ms":        500,
+	config := sarama.NewConfig()
+	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	config.Consumer.Group.Session.Timeout = 20 * time.Second
+	config.Consumer.Group.Heartbeat.Interval = 3 * time.Second
+	config.Version = sarama.V2_6_0_0
+
+	brokerList := strings.Split(brokers, ",")
+	consumerGroup, err := sarama.NewConsumerGroup(brokerList, groupID, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create consumer group: %v", err)
 	}
 
-	consumer, err := kafka.NewConsumer(&config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create consumer: %v", err)
-	}
-
-	err = consumer.SubscribeTopics(topics, nil)
-	if err != nil {
-		consumer.Close()
-		return nil, fmt.Errorf("failed to subscribe to topics: %v", err)
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Consumer{
-		consumer:     consumer,
-		eventChannel: make(chan *models.SensorEvent, 100),
-		errorChannel: make(chan error, 10),
-		stopChannel:  make(chan bool, 1),
+		consumerGroup: consumerGroup,
+		eventChannel:  make(chan *models.SensorEvent, 100),
+		errorChannel:  make(chan error, 10),
+		stopChannel:   make(chan bool, 1),
+		ctx:           ctx,
+		cancel:        cancel,
 	}, nil
 }
 
@@ -62,8 +66,13 @@ func (c *Consumer) ErrorChannel() <-chan error {
 }
 
 // Start begins consuming messages
-func (c *Consumer) Start() {
+func (c *Consumer) Start(topics []string) {
 	log.Println("Starting Kafka consumer...")
+
+	handler := &ConsumerGroupHandler{
+		eventChannel: c.eventChannel,
+		errorChannel: c.errorChannel,
+	}
 
 	go func() {
 		defer close(c.eventChannel)
@@ -71,40 +80,88 @@ func (c *Consumer) Start() {
 
 		for {
 			select {
+			case <-c.ctx.Done():
+				log.Println("Consumer context cancelled")
+				return
 			case <-c.stopChannel:
 				log.Println("Stopping Kafka consumer...")
 				return
 			default:
-				msg, err := c.consumer.ReadMessage(-1) // Block indefinitely
+				err := c.consumerGroup.Consume(c.ctx, topics, handler)
 				if err != nil {
-					kafkaErr, ok := err.(kafka.Error)
-					if ok && kafkaErr.Code() == kafka.ErrTimedOut {
-						continue // Timeout is normal, continue polling
-					}
 					select {
-					case c.errorChannel <- fmt.Errorf("consumer error: %v", err):
+					case c.errorChannel <- fmt.Errorf("consumer group error: %v", err):
 					default:
 						log.Printf("Error channel full, dropping error: %v", err)
 					}
 					continue
 				}
+			}
+		}
+	}()
 
-				c.processMessage(msg)
+	// Handle consumer group errors in a separate goroutine
+	go func() {
+		for err := range c.consumerGroup.Errors() {
+			select {
+			case c.errorChannel <- fmt.Errorf("consumer group error: %v", err):
+			default:
+				log.Printf("Error channel full, dropping error: %v", err)
 			}
 		}
 	}()
 }
 
+// Stop gracefully stops the consumer
+func (c *Consumer) Stop() error {
+	log.Println("Stopping Kafka consumer...")
+
+	select {
+	case c.stopChannel <- true:
+	default:
+	}
+
+	c.cancel()
+	return c.consumerGroup.Close()
+}
+
+// Setup is run at the beginning of a new session, before ConsumeClaim
+func (h *ConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
+	return nil
+}
+
+// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
+func (h *ConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
+	return nil
+}
+
+// ConsumeClaim starts a consumer loop of ConsumerGroupClaim's Messages()
+func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for {
+		select {
+		case message := <-claim.Messages():
+			if message == nil {
+				return nil
+			}
+			h.processMessage(message)
+			session.MarkMessage(message, "")
+
+		case <-session.Context().Done():
+			return nil
+		}
+	}
+}
+
 // processMessage processes an incoming Kafka message
-func (c *Consumer) processMessage(msg *kafka.Message) {
+func (h *ConsumerGroupHandler) processMessage(msg *sarama.ConsumerMessage) {
 	log.Printf("Received message from topic %s [%d] at offset %v",
-		*msg.TopicPartition.Topic, msg.TopicPartition.Partition, msg.TopicPartition.Offset)
+		msg.Topic, msg.Partition, msg.Offset)
 
 	// Parse the sensor event
 	var event models.SensorEvent
 	if err := json.Unmarshal(msg.Value, &event); err != nil {
 		select {
-		case c.errorChannel <- fmt.Errorf("failed to unmarshal message: %v", err):
+		case h.errorChannel <- fmt.Errorf("failed to unmarshal message: %v", err):
 		default:
 			log.Printf("Error channel full, dropping unmarshal error: %v", err)
 		}
@@ -112,9 +169,9 @@ func (c *Consumer) processMessage(msg *kafka.Message) {
 	}
 
 	// Validate the event
-	if err := c.validateEvent(&event); err != nil {
+	if err := validateEvent(&event); err != nil {
 		select {
-		case c.errorChannel <- fmt.Errorf("invalid event: %v", err):
+		case h.errorChannel <- fmt.Errorf("invalid event: %v", err):
 		default:
 			log.Printf("Error channel full, dropping validation error: %v", err)
 		}
@@ -123,7 +180,7 @@ func (c *Consumer) processMessage(msg *kafka.Message) {
 
 	// Send event to processing channel
 	select {
-	case c.eventChannel <- &event:
+	case h.eventChannel <- &event:
 		log.Printf("Event processed successfully: machine=%s, status=%s, type=%s",
 			event.MachineID, event.Status, event.EventType)
 	default:
@@ -132,7 +189,7 @@ func (c *Consumer) processMessage(msg *kafka.Message) {
 }
 
 // validateEvent validates a sensor event
-func (c *Consumer) validateEvent(event *models.SensorEvent) error {
+func validateEvent(event *models.SensorEvent) error {
 	if event.MachineID == "" {
 		return fmt.Errorf("machine_id is required")
 	}
@@ -170,21 +227,4 @@ func (c *Consumer) validateEvent(event *models.SensorEvent) error {
 	}
 
 	return nil
-}
-
-// Stop gracefully stops the consumer
-func (c *Consumer) Stop() error {
-	log.Println("Stopping Kafka consumer...")
-
-	select {
-	case c.stopChannel <- true:
-	default:
-	}
-
-	return c.consumer.Close()
-}
-
-// GetMetadata returns consumer metadata
-func (c *Consumer) GetMetadata() (*kafka.Metadata, error) {
-	return c.consumer.GetMetadata(nil, false, 5000)
 }

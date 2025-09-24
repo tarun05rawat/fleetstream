@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/IBM/sarama"
 	"github.com/joho/godotenv"
 )
 
@@ -29,7 +29,7 @@ type SensorEvent struct {
 
 // SensorSimulator handles sensor data generation and publishing
 type SensorSimulator struct {
-	producer        *kafka.Producer
+	producer        sarama.SyncProducer
 	topic           string
 	frequency       time.Duration
 	machineID       string
@@ -41,15 +41,14 @@ type SensorSimulator struct {
 
 // NewSensorSimulator creates a new sensor simulator instance
 func NewSensorSimulator(brokers, topic, machineID string, frequency time.Duration) (*SensorSimulator, error) {
-	config := kafka.ConfigMap{
-		"bootstrap.servers": brokers,
-		"client.id":         fmt.Sprintf("sensor-simulator-%s", machineID),
-		"acks":              "all",
-		"retries":           3,
-		"retry.backoff.ms":  100,
-	}
+	config := sarama.NewConfig()
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Retry.Max = 3
+	config.Producer.Return.Successes = true
+	config.ClientID = fmt.Sprintf("sensor-simulator-%s", machineID)
 
-	producer, err := kafka.NewProducer(&config)
+	brokerList := []string{brokers}
+	producer, err := sarama.NewSyncProducer(brokerList, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer: %v", err)
 	}
@@ -137,38 +136,26 @@ func (s *SensorSimulator) publishEvent(event *SensorEvent) error {
 		return fmt.Errorf("failed to marshal event: %v", err)
 	}
 
-	message := &kafka.Message{
-		TopicPartition: kafka.TopicPartition{
-			Topic:     &s.topic,
-			Partition: kafka.PartitionAny,
-		},
-		Key:   []byte(event.MachineID),
-		Value: eventJSON,
-		Headers: []kafka.Header{
-			{Key: "event_type", Value: []byte(event.EventType)},
-			{Key: "machine_id", Value: []byte(event.MachineID)},
-			{Key: "status", Value: []byte(event.Status)},
-		},
+	headers := []sarama.RecordHeader{
+		{Key: []byte("event_type"), Value: []byte(event.EventType)},
+		{Key: []byte("machine_id"), Value: []byte(event.MachineID)},
+		{Key: []byte("status"), Value: []byte(event.Status)},
 	}
 
-	deliveryChan := make(chan kafka.Event)
-	defer close(deliveryChan)
+	message := &sarama.ProducerMessage{
+		Topic:   s.topic,
+		Key:     sarama.StringEncoder(event.MachineID),
+		Value:   sarama.ByteEncoder(eventJSON),
+		Headers: headers,
+	}
 
-	err = s.producer.Produce(message, deliveryChan)
+	partition, offset, err := s.producer.SendMessage(message)
 	if err != nil {
 		return fmt.Errorf("failed to produce message: %v", err)
 	}
 
-	// Wait for delivery confirmation
-	e := <-deliveryChan
-	m := e.(*kafka.Message)
-
-	if m.TopicPartition.Error != nil {
-		return fmt.Errorf("delivery failed: %v", m.TopicPartition.Error)
-	}
-
 	log.Printf("Event delivered to topic %s [%d] at offset %v: %s",
-		*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset, event.EventType)
+		s.topic, partition, offset, event.EventType)
 
 	return nil
 }
@@ -202,7 +189,6 @@ func (s *SensorSimulator) Start() {
 // Close gracefully shuts down the simulator
 func (s *SensorSimulator) Close() {
 	log.Println("Closing sensor simulator...")
-	s.producer.Flush(15 * 1000) // Wait up to 15 seconds
 	s.producer.Close()
 }
 

@@ -75,7 +75,7 @@ func main() {
 	log.Printf("Kafka consumer initialized, topics: %v", cfg.Kafka.Topics)
 
 	// Start Kafka consumer
-	consumer.Start()
+	consumer.Start(cfg.Kafka.Topics)
 
 	// Process events from Kafka
 	go func() {

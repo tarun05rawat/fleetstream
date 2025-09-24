@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o backend .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o backend .
 
 # Final stage
 FROM alpine:latest

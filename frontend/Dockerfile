@@ -1,12 +1,14 @@
-# Multi-stage build for React app
-FROM node:18-alpine AS builder
+# Multi-stage build for React app with Vite
+FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-# Install all dependencies (including devDependencies for build)
-RUN npm ci
+
+# Clear npm cache and install dependencies
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -15,10 +17,10 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM nginx:alpine AS frontend-production
 
-# Copy built assets from builder stage
-COPY --from=builder /app/build /usr/share/nginx/html
+# Copy built assets from builder stage (Vite outputs to dist, not build)
+COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, Wifi, WifiOff } from 'lucide-react';
-import { SensorEvent, Alert, EventStats, ChartDataPoint } from '../types';
-import { useWebSocket } from '../hooks/useWebSocket';
-import { eventsApi, systemApi, handleApiError } from '../services/api';
-import { RealtimeChart } from './RealtimeChart';
-import { MetricsCard } from './MetricsCard';
-import { AlertsPanel } from './AlertsPanel';
-import { MachineStatus } from './MachineStatus';
-import { StatusIndicator } from './StatusIndicator';
+import React, { useState, useEffect, useMemo } from "react";
+import { Activity, Wifi, WifiOff } from "lucide-react";
+import { SensorEvent, Alert, EventStats, ChartDataPoint } from "../types";
+import { useWebSocket } from "../hooks/useWebSocket";
+import { eventsApi, systemApi, handleApiError } from "../services/api";
+import { RealtimeChart } from "./RealtimeChart";
+import { MetricsCard } from "./MetricsCard";
+import { AlertsPanel } from "./AlertsPanel";
+import { MachineStatus } from "./MachineStatus";
+import { StatusIndicator } from "./StatusIndicator";
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8080/ws';
+const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:8080/ws";
 
 export const Dashboard: React.FC = () => {
   const [events, setEvents] = useState<SensorEvent[]>([]);
   const [newAlerts, setNewAlerts] = useState<Alert[]>([]);
   const [stats, setStats] = useState<EventStats | null>(null);
-  const [selectedMachine, setSelectedMachine] = useState<string>('');
+  const [selectedMachine, setSelectedMachine] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,28 +24,28 @@ export const Dashboard: React.FC = () => {
     url: WS_URL,
     onMessage: (message) => {
       switch (message.type) {
-        case 'sensor_event':
+        case "sensor_event":
           handleNewEvent(message.data);
           break;
-        case 'alert':
+        case "alert":
           handleNewAlert(message.data);
           break;
-        case 'stats':
+        case "stats":
           if (message.data.system_stats) {
             setStats(message.data.system_stats);
           }
           break;
         default:
-          console.log('Unhandled WebSocket message type:', message.type);
+          console.log("Unhandled WebSocket message type:", message.type);
       }
     },
     onConnect: () => {
-      console.log('Connected to WebSocket');
+      console.log("Connected to WebSocket");
       // Subscribe to relevant topics
       // subscribe(['sensor_events', 'alerts', 'stats']);
     },
     onDisconnect: () => {
-      console.log('Disconnected from WebSocket');
+      console.log("Disconnected from WebSocket");
     },
     reconnectInterval: 3000,
     maxReconnectAttempts: 5,
@@ -65,12 +65,12 @@ export const Dashboard: React.FC = () => {
         limit: 100,
         machine_id: selectedMachine || undefined,
       });
-      setEvents(eventsResponse.events);
+      setEvents(eventsResponse.events || []);
 
       // Fetch system stats
       const statsResponse = await eventsApi.getEventStats({
         machine_id: selectedMachine || undefined,
-        since: '1h',
+        since: "1h",
       });
       setStats(statsResponse.stats);
     } catch (err) {
@@ -82,7 +82,7 @@ export const Dashboard: React.FC = () => {
 
   const handleNewEvent = (event: SensorEvent) => {
     // Add new event to the beginning of the list
-    setEvents(prev => {
+    setEvents((prev) => {
       const newEvents = [event, ...prev];
       // Keep only last 100 events for performance
       return newEvents.slice(0, 100);
@@ -91,13 +91,15 @@ export const Dashboard: React.FC = () => {
 
   const handleNewAlert = (alert: Alert) => {
     // Add new alert to the beginning of the list
-    setNewAlerts(prev => [alert, ...prev.slice(0, 4)]); // Keep only 5 most recent
+    setNewAlerts((prev) => [alert, ...prev.slice(0, 4)]); // Keep only 5 most recent
   };
 
   const chartData = useMemo((): ChartDataPoint[] => {
-    return events
-      .filter(event => !selectedMachine || event.machine_id === selectedMachine)
-      .map(event => ({
+    return (events || [])
+      .filter(
+        (event) => !selectedMachine || event.machine_id === selectedMachine
+      )
+      .map((event) => ({
         timestamp: event.timestamp,
         conveyor_speed: event.conveyor_speed,
         temperature: event.temperature,
@@ -110,32 +112,32 @@ export const Dashboard: React.FC = () => {
 
   const latestEvent = useMemo(() => {
     const filteredEvents = selectedMachine
-      ? events.filter(e => e.machine_id === selectedMachine)
-      : events;
+      ? (events || []).filter((e) => e.machine_id === selectedMachine)
+      : events || [];
     return filteredEvents[0] || null;
   }, [events, selectedMachine]);
 
   const getConnectionStatusColor = () => {
     switch (connectionStatus) {
-      case 'connected':
-        return 'text-success-600';
-      case 'connecting':
-        return 'text-warning-600';
+      case "connected":
+        return "text-success-600";
+      case "connecting":
+        return "text-warning-600";
       default:
-        return 'text-danger-600';
+        return "text-danger-600";
     }
   };
 
   const getConnectionStatusText = () => {
     switch (connectionStatus) {
-      case 'connected':
-        return 'Connected';
-      case 'connecting':
-        return 'Connecting...';
-      case 'disconnected':
-        return 'Disconnected';
+      case "connected":
+        return "Connected";
+      case "connecting":
+        return "Connecting...";
+      case "disconnected":
+        return "Disconnected";
       default:
-        return 'Error';
+        return "Error";
     }
   };
 
@@ -147,7 +149,9 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <Activity className="text-primary-600" size={24} />
-              <h1 className="text-xl font-bold text-gray-900">FactoryFlow Dashboard</h1>
+              <h1 className="text-xl font-bold text-gray-900">
+                FactoryFlow Dashboard
+              </h1>
             </div>
 
             <div className="flex items-center gap-4">
@@ -166,7 +170,9 @@ export const Dashboard: React.FC = () => {
               {/* Connection Status */}
               <div className="flex items-center gap-2">
                 {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
-                <span className={`text-sm font-medium ${getConnectionStatusColor()}`}>
+                <span
+                  className={`text-sm font-medium ${getConnectionStatusColor()}`}
+                >
                   {getConnectionStatusText()}
                 </span>
               </div>
@@ -193,10 +199,10 @@ export const Dashboard: React.FC = () => {
             unit="°C"
             status={
               latestEvent?.temperature && latestEvent.temperature > 80
-                ? 'critical'
+                ? "critical"
                 : latestEvent?.temperature && latestEvent.temperature > 75
-                ? 'warning'
-                : 'normal'
+                ? "warning"
+                : "normal"
             }
             icon={<Activity size={20} />}
           />
@@ -207,8 +213,8 @@ export const Dashboard: React.FC = () => {
             unit="m/s"
             status={
               latestEvent?.conveyor_speed && latestEvent.conveyor_speed < 0.5
-                ? 'warning'
-                : 'normal'
+                ? "warning"
+                : "normal"
             }
             icon={<Activity size={20} />}
           />
@@ -222,13 +228,17 @@ export const Dashboard: React.FC = () => {
 
           <MetricsCard
             title="System Status"
-            value={latestEvent?.status ? (
-              <StatusIndicator
-                status={latestEvent.status}
-                size="sm"
-                showIcon={false}
-              />
-            ) : 'Unknown'}
+            value={
+              latestEvent?.status ? (
+                <StatusIndicator
+                  status={latestEvent.status}
+                  size="sm"
+                  showIcon={false}
+                />
+              ) : (
+                "Unknown"
+              )
+            }
             unit=""
             icon={<Activity size={20} />}
           />
@@ -240,7 +250,9 @@ export const Dashboard: React.FC = () => {
           <div className="lg:col-span-2 space-y-8">
             <RealtimeChart
               data={chartData}
-              title={`Real-time Sensor Data ${selectedMachine ? `- ${selectedMachine}` : ''}`}
+              title={`Real-time Sensor Data ${
+                selectedMachine ? `- ${selectedMachine}` : ""
+              }`}
               height={400}
             />
 
@@ -248,25 +260,37 @@ export const Dashboard: React.FC = () => {
             {stats && (
               <div className="card">
                 <div className="card-header">
-                  <h3 className="text-lg font-semibold text-gray-900">System Statistics (Last Hour)</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    System Statistics (Last Hour)
+                  </h3>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{stats.total_events}</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {stats.total_events}
+                    </div>
                     <div className="text-sm text-gray-500">Total Events</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-danger-600">{stats.fault_events}</div>
+                    <div className="text-2xl font-bold text-danger-600">
+                      {stats.fault_events}
+                    </div>
                     <div className="text-sm text-gray-500">Fault Events</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-warning-600">{stats.warning_events}</div>
+                    <div className="text-2xl font-bold text-warning-600">
+                      {stats.warning_events}
+                    </div>
                     <div className="text-sm text-gray-500">Warning Events</div>
                   </div>
                   <div className="text-center">
-                    <div className={`text-2xl font-bold ${
-                      stats.uptime_percent >= 95 ? 'text-success-600' : 'text-warning-600'
-                    }`}>
+                    <div
+                      className={`text-2xl font-bold ${
+                        stats.uptime_percent >= 95
+                          ? "text-success-600"
+                          : "text-warning-600"
+                      }`}
+                    >
                       {stats.uptime_percent.toFixed(1)}%
                     </div>
                     <div className="text-sm text-gray-500">Uptime</div>

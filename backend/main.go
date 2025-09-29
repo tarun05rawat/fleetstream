@@ -65,46 +65,51 @@ func main() {
 
 	anomalyDetector := services.NewAnomalyDetector(alertCallback)
 
-	// Initialize Kafka consumer
+	// Initialize Kafka consumer (optional)
 	consumer, err := kafka.NewConsumer(cfg.Kafka.Brokers, cfg.Kafka.GroupID, cfg.Kafka.Topics)
 	if err != nil {
-		log.Fatalf("Failed to initialize Kafka consumer: %v", err)
+		log.Printf("Warning: Failed to initialize Kafka consumer: %v", err)
+		log.Println("Continuing without Kafka - running in demo mode")
+		consumer = nil // Set to nil so we can check later
+	} else {
+		defer consumer.Stop()
+		log.Printf("Kafka consumer initialized, topics: %v", cfg.Kafka.Topics)
+		// Start Kafka consumer
+		consumer.Start(cfg.Kafka.Topics)
 	}
-	defer consumer.Stop()
 
-	log.Printf("Kafka consumer initialized, topics: %v", cfg.Kafka.Topics)
+	// Process events from Kafka (only if Kafka is available)
+	if consumer != nil {
+		go func() {
+			for {
+				select {
+				case event := <-consumer.EventChannel():
+					if event != nil {
+						// Store event in database
+						dbEvent, err := db.InsertEvent(event)
+						if err != nil {
+							log.Printf("Failed to store event: %v", err)
+							continue
+						}
 
-	// Start Kafka consumer
-	consumer.Start(cfg.Kafka.Topics)
+						// Analyze for anomalies
+						anomalyDetector.AnalyzeEvent(event)
 
-	// Process events from Kafka
-	go func() {
-		for {
-			select {
-			case event := <-consumer.EventChannel():
-				if event != nil {
-					// Store event in database
-					dbEvent, err := db.InsertEvent(event)
-					if err != nil {
-						log.Printf("Failed to store event: %v", err)
-						continue
+						// Broadcast to WebSocket clients
+						wsHub.BroadcastEvent(event)
+
+						log.Printf("Event processed: ID=%d, Machine=%s, Status=%s",
+							dbEvent.ID, event.MachineID, event.Status)
 					}
 
-					// Analyze for anomalies
-					anomalyDetector.AnalyzeEvent(event)
-
-					// Broadcast to WebSocket clients
-					wsHub.BroadcastEvent(event)
-
-					log.Printf("Event processed: ID=%d, Machine=%s, Status=%s",
-						dbEvent.ID, event.MachineID, event.Status)
+				case err := <-consumer.ErrorChannel():
+					log.Printf("Kafka consumer error: %v", err)
 				}
-
-			case err := <-consumer.ErrorChannel():
-				log.Printf("Kafka consumer error: %v", err)
 			}
-		}
-	}()
+		}()
+	} else {
+		log.Println("Kafka not available - API endpoints will work but no real-time events")
+	}
 
 	// Periodic statistics broadcast
 	go func() {

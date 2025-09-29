@@ -9,7 +9,9 @@ import { AlertsPanel } from "./AlertsPanel";
 import { MachineStatus } from "./MachineStatus";
 import { StatusIndicator } from "./StatusIndicator";
 
-const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:8080/ws";
+const WS_URL =
+  process.env.REACT_APP_WS_URL ||
+  "wss://xcxigmymtw.us-east-1.awsapprunner.com/ws";
 
 export const Dashboard: React.FC = () => {
   const [events, setEvents] = useState<SensorEvent[]>([]);

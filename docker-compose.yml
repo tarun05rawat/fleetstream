@@ -72,8 +72,8 @@ services:
     depends_on:
       - backend
     environment:
-      REACT_APP_API_URL: http://localhost:8080
-      REACT_APP_WS_URL: ws://localhost:8080
+      REACT_APP_API_URL: https://xcxigmymtw.us-east-1.awsapprunner.com
+      REACT_APP_WS_URL: wss://xcxigmymtw.us-east-1.awsapprunner.com/ws
 
 volumes:
   postgres_data:

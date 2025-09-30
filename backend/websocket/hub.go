@@ -12,12 +12,15 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow connections from any origin in development
-	},
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+    CheckOrigin: func(r *http.Request) bool {
+        origin := r.Header.Get("Origin")
+        allowed := "https://8jmxm2bjvs.us-east-1.awsapprunner.com/"
+        return origin == allowed
+    },
+    ReadBufferSize:  1024,
+    WriteBufferSize: 1024,
 }
+
 
 // Hub maintains the set of active clients and broadcasts messages to the clients
 type Hub struct {

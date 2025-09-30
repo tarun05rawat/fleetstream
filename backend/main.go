@@ -145,13 +145,14 @@ func main() {
 
 	// Setup CORS middleware
 	c := cors.New(cors.Options{
-		AllowedOrigins:   cfg.Server.AllowOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		ExposedHeaders:   []string{"*"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	})
+    AllowedOrigins:   []string{"https://8jmxm2bjvs.us-east-1.awsapprunner.com/"},
+    AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+    AllowedHeaders:   []string{"*"},
+    ExposedHeaders:   []string{"*"},
+    AllowCredentials: true,
+    MaxAge:           300,
+})
+
 
 	router.Use(func(ctx *gin.Context) {
 		c.HandlerFunc(ctx.Writer, ctx.Request)

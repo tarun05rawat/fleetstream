@@ -1,0 +1,21 @@
+services:
+  - type: worker
+    name: sensor-simulator
+    env: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: KAFKA_BROKERS
+        value: pkc-oxqxx9.us-east-1.aws.confluent.cloud:9092
+      - key: KAFKA_USERNAME
+        value: ZWAIYHGZUHECAULM
+      - key: KAFKA_PASSWORD
+        value: cfltxRP/Ycqi4L1od9hJ5NcoHgLmLUTYUGVI6zVz6JuA8/7FpViSZyZ+QYdmUxtA
+      - key: KAFKA_TOPIC
+        value: line1.sensor
+      - key: KAFKA_SECURITY_PROTOCOL
+        value: SASL_SSL
+      - key: KAFKA_SASL_MECHANISM
+        value: PLAIN
+      - key: EVENT_INTERVAL
+        value: 3

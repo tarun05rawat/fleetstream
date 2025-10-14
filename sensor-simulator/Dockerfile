@@ -29,7 +29,16 @@ COPY --from=builder /app/sensor-simulator .
 RUN adduser -D -s /bin/sh sensor
 USER sensor
 
-# Expose health check endpoint (if implemented)
+# Expose optional health check endpoint
 EXPOSE 8090
+
+# ✅ Default environment variables for Confluent Cloud Kafka
+ENV KAFKA_BROKERS=pkc-oxqxx9.us-east-1.aws.confluent.cloud:9092
+ENV KAFKA_USERNAME=ZWAIYHGZUHECAULM
+ENV KAFKA_PASSWORD="cfltxRP/Ycqi4L1od9hJ5NcoHgLmLUTYUGVI6zVz6JuA8/7FpViSZyZ+QYdmUxtA"
+ENV KAFKA_TOPIC=line1.sensor
+ENV KAFKA_SECURITY_PROTOCOL=SASL_SSL
+ENV KAFKA_SASL_MECHANISM=PLAIN
+ENV EVENT_INTERVAL=3
 
 CMD ["./sensor-simulator"]

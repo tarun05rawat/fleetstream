@@ -10,11 +10,15 @@ import {
 } from "../types";
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL ||
-  "https://xcxigmymtw.us-east-1.awsapprunner.com";
+  import.meta.env.VITE_API_URL ||
+  "https://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com";
+
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  "wss://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com/ws";
 
 console.log("API_BASE_URL:", API_BASE_URL);
-console.log("REACT_APP_API_URL env:", process.env.REACT_APP_API_URL);
+console.log("VITE_API_URL env:", import.meta.env.VITE_API_URL);
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,

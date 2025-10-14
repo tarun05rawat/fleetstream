@@ -4,8 +4,8 @@ metadata:
   name: frontend-config
   namespace: factoryflow
 data:
-  REACT_APP_API_URL: "http://api.factoryflow.local"
-  REACT_APP_WS_URL: "ws://api.factoryflow.local/ws"
+  REACT_APP_API_URL: "https://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com"
+  REACT_APP_WS_URL: "wss://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com/ws"
 
 ---
 apiVersion: apps/v1
@@ -26,33 +26,33 @@ spec:
         app: frontend
     spec:
       containers:
-      - name: frontend
-        image: factoryflow/frontend:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 3000
-        envFrom:
-        - configMapRef:
-            name: frontend-config
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "100m"
-          limits:
-            memory: "128Mi"
-            cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 10
+        - name: frontend
+          image: factoryflow/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: frontend-config
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
 
 ---
 apiVersion: v1
@@ -64,9 +64,9 @@ spec:
   selector:
     app: frontend
   ports:
-  - name: http
-    port: 3000
-    targetPort: 3000
+    - name: http
+      port: 80
+      targetPort: 80
   type: ClusterIP
 
 ---
@@ -79,13 +79,13 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: factoryflow.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 3000
+    - host: factoryflow.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000

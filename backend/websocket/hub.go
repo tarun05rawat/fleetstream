@@ -14,7 +14,7 @@ import (
 var upgrader = websocket.Upgrader{
     CheckOrigin: func(r *http.Request) bool {
         origin := r.Header.Get("Origin")
-        allowed := "https://8jmxm2bjvs.us-east-1.awsapprunner.com/"
+        allowed := "https://8jmxm2bjvs.us-east-1.awsapprunner.com"
         return origin == allowed
     },
     ReadBufferSize:  1024,

@@ -29,7 +29,12 @@ COPY --from=builder /app/backend .
 RUN adduser -D -s /bin/sh factoryuser
 USER factoryuser
 
-# Expose the application port
+# Expose port
 EXPOSE 8080
 
+# Healthcheck (calls your /health endpoint)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
+
+# Start backend
 CMD ["./backend"]

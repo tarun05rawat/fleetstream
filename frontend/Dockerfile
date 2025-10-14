@@ -6,20 +6,18 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Clear npm cache and install dependencies
-RUN npm cache clean --force && \
-    npm install --legacy-peer-deps
+RUN npm cache clean --force && npm install --legacy-peer-deps
 
-# Copy source code
+# Copy all source (including .env.production if present)
 COPY . .
 
-# Set build-time environment variables
-ARG REACT_APP_API_URL=https://xcxigmymtw.us-east-1.awsapprunner.com
-ARG REACT_APP_WS_URL=wss://xcxigmymtw.us-east-1.awsapprunner.com/ws
-ENV REACT_APP_API_URL=$REACT_APP_API_URL
-ENV REACT_APP_WS_URL=$REACT_APP_WS_URL
+# ✅ Use VITE_ instead of REACT_APP_
+ARG VITE_API_URL=https://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com
+ARG VITE_WS_URL=wss://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com/ws
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WS_URL=$VITE_WS_URL
 
-# Build the application
+# Build the application with env injected
 RUN npm run build
 
 # Production stage
@@ -31,7 +29,5 @@ COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port
-EXPOSE 3000
-
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

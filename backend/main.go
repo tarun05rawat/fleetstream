@@ -145,7 +145,7 @@ func main() {
 
 	// Setup CORS middleware
 	c := cors.New(cors.Options{
-    AllowedOrigins:   []string{"https://8jmxm2bjvs.us-east-1.awsapprunner.com/"},
+    AllowedOrigins:   []string{"*"}, // for testing, later restrict
     AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
     AllowedHeaders:   []string{"*"},
     ExposedHeaders:   []string{"*"},
@@ -174,32 +174,33 @@ func main() {
 
 	// API routes
 	api := router.Group("/api")
-	{
-		// Events
-		api.GET("/events", handler.GetEvents)
-		api.GET("/events/stats", handler.GetEventStats)
+	api.Use(func(ctx *gin.Context) {
+    c.HandlerFunc(ctx.Writer, ctx.Request)
+    if ctx.Request.Method == "OPTIONS" {
+        ctx.AbortWithStatus(http.StatusNoContent)
+        return
+    }
+    ctx.Next()
+	}) // 👈 apply CORS here
 
-		// Alerts
-		api.GET("/alerts", handler.GetAlerts)
-		api.PUT("/alerts/:id/acknowledge", handler.AcknowledgeAlert)
+{
+    api.GET("/events", handler.GetEvents)
+    api.GET("/events/stats", handler.GetEventStats)
+    api.GET("/alerts", handler.GetAlerts)
+    api.PUT("/alerts/:id/acknowledge", handler.AcknowledgeAlert)
+    api.GET("/parameters", handler.GetProcessParameters)
+    api.PUT("/parameters", handler.UpdateProcessParameter)
+    api.GET("/machines", handler.GetMachines)
+    api.GET("/system/health", handler.GetSystemHealth)
+    api.GET("/anomaly/thresholds", handler.GetAnomalyThresholds)
+    api.PUT("/anomaly/thresholds", handler.UpdateAnomalyThresholds)
+}
 
-		// Process parameters
-		api.GET("/parameters", handler.GetProcessParameters)
-		api.PUT("/parameters", handler.UpdateProcessParameter)
+// WebSocket route (no CORS middleware)
+router.GET("/ws", func(c *gin.Context) {
+    wsHub.HandleWebSocket(c.Writer, c.Request)
+})
 
-		// Machines
-		api.GET("/machines", handler.GetMachines)
-
-		// System health
-		api.GET("/system/health", handler.GetSystemHealth)
-
-		// Anomaly detection
-		api.GET("/anomaly/thresholds", handler.GetAnomalyThresholds)
-		api.PUT("/anomaly/thresholds", handler.UpdateAnomalyThresholds)
-	}
-
-	// WebSocket endpoint
-	router.GET("/ws", handler.WebSocketEndpoint)
 
 	// Create HTTP server
 	server := &http.Server{

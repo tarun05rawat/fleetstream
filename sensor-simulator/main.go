@@ -47,7 +47,20 @@ func NewSensorSimulator(brokers, topic, machineID string, frequency time.Duratio
 	config.Producer.Return.Successes = true
 	config.ClientID = fmt.Sprintf("sensor-simulator-%s", machineID)
 
+	// 🔒 Enable SASL_SSL for Confluent Cloud
+	config.Net.SASL.Enable = true
+	config.Net.SASL.User = getEnvOrDefault("KAFKA_USERNAME", "")
+	config.Net.SASL.Password = getEnvOrDefault("KAFKA_PASSWORD", "")
+	config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+
+	config.Net.TLS.Enable = true // required for SSL encryption
+	config.Net.TLS.Config = nil  // safe default (use system CAs)
+
+	// 🔧 Kafka version must be compatible with Confluent Cloud
+	config.Version = sarama.V2_5_0_0
+
 	brokerList := []string{brokers}
+
 	producer, err := sarama.NewSyncProducer(brokerList, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer: %v", err)
@@ -64,6 +77,7 @@ func NewSensorSimulator(brokers, topic, machineID string, frequency time.Duratio
 		robotArmAngle: 90.0, // Initial angle
 	}, nil
 }
+
 
 // generateSensorEvent creates a realistic sensor event with potential faults
 func (s *SensorSimulator) generateSensorEvent() *SensorEvent {

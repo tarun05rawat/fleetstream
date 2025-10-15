@@ -20,25 +20,15 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates tzdata
 
-WORKDIR /root/
+WORKDIR /app
 
-# Copy the binary from builder stage
-COPY --from=builder /app/sensor-simulator .
+# Copy the binary from builder stage and fix permissions
+COPY --from=builder /app/sensor-simulator /app/sensor-simulator
+RUN chmod +x /app/sensor-simulator && \
+    adduser -D -s /bin/sh sensor && \
+    chown sensor:sensor /app/sensor-simulator
 
-# Create a non-root user
-RUN adduser -D -s /bin/sh sensor
 USER sensor
 
-# Expose optional health check endpoint
 EXPOSE 8090
-
-# ✅ Default environment variables for Confluent Cloud Kafka
-ENV KAFKA_BROKERS=pkc-oxqxx9.us-east-1.aws.confluent.cloud:9092
-ENV KAFKA_USERNAME=ZWAIYHGZUHECAULM
-ENV KAFKA_PASSWORD="cfltxRP/Ycqi4L1od9hJ5NcoHgLmLUTYUGVI6zVz6JuA8/7FpViSZyZ+QYdmUxtA"
-ENV KAFKA_TOPIC=line1.sensor
-ENV KAFKA_SECURITY_PROTOCOL=SASL_SSL
-ENV KAFKA_SASL_MECHANISM=PLAIN
-ENV EVENT_INTERVAL=3
-
 CMD ["./sensor-simulator"]

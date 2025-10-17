@@ -12,8 +12,8 @@ RUN npm cache clean --force && npm install --legacy-peer-deps
 COPY . .
 
 # ✅ Use VITE_ instead of REACT_APP_
-ARG VITE_API_URL=https://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com
-ARG VITE_WS_URL=wss://factoryflow-backend-env.eba-kzwaapzm.us-east-1.elasticbeanstalk.com/ws
+ARG VITE_API_URL=https://factoryflow-backend-env.us-east-1.elasticbeanstalk.com
+ARG VITE_WS_URL=wss://factoryflow-backend-env.us-east-1.elasticbeanstalk.com/ws
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 

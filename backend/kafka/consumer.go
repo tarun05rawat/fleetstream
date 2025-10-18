@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -28,16 +29,28 @@ type ConsumerGroupHandler struct {
 	errorChannel chan error
 }
 
-// NewConsumer creates a new Kafka consumer
+// NewConsumer creates a new Kafka consumer (with Confluent Cloud SASL/SSL)
 func NewConsumer(brokers, groupID string, topics []string) (*Consumer, error) {
 	config := sarama.NewConfig()
-	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+
+	// --- SASL/SSL for Confluent Cloud ---
+	config.Net.SASL.Enable = true
+	config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+	config.Net.SASL.User = os.Getenv("KAFKA_USERNAME")
+	config.Net.SASL.Password = os.Getenv("KAFKA_PASSWORD")
+	config.Net.TLS.Enable = true
+
+	// --- Consumer configuration ---
+	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 	config.Consumer.Group.Session.Timeout = 20 * time.Second
 	config.Consumer.Group.Heartbeat.Interval = 3 * time.Second
-	config.Version = sarama.V2_6_0_0
+	config.Consumer.Return.Errors = true
+	config.Version = sarama.V2_8_0_0
 
 	brokerList := strings.Split(brokers, ",")
+	log.Printf("Connecting to Kafka brokers: %v", brokerList)
+
 	consumerGroup, err := sarama.NewConsumerGroup(brokerList, groupID, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer group: %v", err)
@@ -54,6 +67,8 @@ func NewConsumer(brokers, groupID string, topics []string) (*Consumer, error) {
 		cancel:        cancel,
 	}, nil
 }
+
+
 
 // EventChannel returns the channel for receiving sensor events
 func (c *Consumer) EventChannel() <-chan *models.SensorEvent {

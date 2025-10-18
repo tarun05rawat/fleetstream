@@ -42,7 +42,7 @@ func NewConsumer(brokers, groupID string, topics []string) (*Consumer, error) {
 
 	// --- Consumer configuration ---
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	config.Consumer.Group.Session.Timeout = 20 * time.Second
 	config.Consumer.Group.Heartbeat.Interval = 3 * time.Second
 	config.Consumer.Return.Errors = true

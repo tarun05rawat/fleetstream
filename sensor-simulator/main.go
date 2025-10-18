@@ -39,32 +39,40 @@ type SensorSimulator struct {
 	robotArmAngle   float64
 }
 
-// NewSensorSimulator creates a new sensor simulator instance
+// NewSensorSimulator creates a new sensor simulator instance (Confluent Cloud SASL/SSL)
 func NewSensorSimulator(brokers, topic, machineID string, frequency time.Duration) (*SensorSimulator, error) {
 	config := sarama.NewConfig()
+
+	// Producer reliability
 	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Retry.Max = 3
+	config.Producer.Retry.Max = 5
 	config.Producer.Return.Successes = true
 	config.ClientID = fmt.Sprintf("sensor-simulator-%s", machineID)
 
-	// 🔒 Enable SASL_SSL for Confluent Cloud
+	// --- 🔒 SASL/SSL Authentication for Confluent Cloud ---
 	config.Net.SASL.Enable = true
 	config.Net.SASL.User = getEnvOrDefault("KAFKA_USERNAME", "")
 	config.Net.SASL.Password = getEnvOrDefault("KAFKA_PASSWORD", "")
 	config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+	config.Net.TLS.Enable = true
+	// Don’t override config.Net.TLS.Config (nil uses system CAs automatically)
 
-	config.Net.TLS.Enable = true // required for SSL encryption
-	config.Net.TLS.Config = nil  // safe default (use system CAs)
+	// --- ⚙️ Confluent Cloud requires minimum Kafka v2.8.0 ---
+	config.Version = sarama.V2_8_0_0
 
-	// 🔧 Kafka version must be compatible with Confluent Cloud
-	config.Version = sarama.V2_5_0_0
+	// --- 🧠 Small buffer improvement for async flush safety ---
+	config.Producer.Flush.Frequency = 500 * time.Millisecond
+	config.Producer.Flush.MaxMessages = 100
 
 	brokerList := []string{brokers}
+	log.Printf("Connecting to Kafka brokers: %v", brokerList)
 
 	producer, err := sarama.NewSyncProducer(brokerList, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer: %v", err)
 	}
+
+	log.Println("Kafka producer initialized successfully")
 
 	return &SensorSimulator{
 		producer:      producer,
@@ -77,6 +85,7 @@ func NewSensorSimulator(brokers, topic, machineID string, frequency time.Duratio
 		robotArmAngle: 90.0, // Initial angle
 	}, nil
 }
+
 
 
 // generateSensorEvent creates a realistic sensor event with potential faults

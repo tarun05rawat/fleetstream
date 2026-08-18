@@ -48,8 +48,10 @@ The system is designed to emulate a lightweight manufacturing monitoring pipelin
 Sensor Simulator -> Kafka -> Go Backend -> PostgreSQL
                                  |
                                  -> WebSocket Updates -> React Dashboard
-                                
+                                 
 ## Repository Structure
+
+```text
 fleetstream/
 ├── backend/              # Go API, Kafka consumer, WebSocket server, anomaly logic
 ├── frontend/             # React + TypeScript dashboard
@@ -60,7 +62,6 @@ fleetstream/
 ├── docker-compose.yml    # Local multi-service development setup
 ├── Makefile              # Common development and deployment commands
 └── DEPLOYMENT.md         # Detailed deployment guide
-
 
 
 ## How It Works

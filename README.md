@@ -63,7 +63,7 @@ fleetstream/
 ├── Makefile              # Common development and deployment commands
 └── DEPLOYMENT.md         # Detailed deployment guide
 
-
+```
 ## How It Works
 The sensor simulator generates telemetry for machines such as conveyors, robot arms, and sensor hubs.
 Events are published to Kafka topics.

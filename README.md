@@ -65,17 +65,17 @@ fleetstream/
 
 ```
 ## How It Works
-The sensor simulator generates telemetry for machines such as conveyors, robot arms, and sensor hubs.
-Events are published to Kafka topics.
-The backend consumes those events, stores them in PostgreSQL, and runs anomaly checks.
-Alerts and system statistics are broadcast to connected clients over WebSockets.
-The frontend displays live events, alerts, and operational metrics.
+- The sensor simulator generates telemetry for machines such as conveyors, robot arms, and sensor hubs.
+- Events are published to Kafka topics.
+- The backend consumes those events, stores them in PostgreSQL, and runs anomaly checks.
+- Alerts and system statistics are broadcast to connected clients over WebSockets.
+- The frontend displays live events, alerts, and operational metrics.
 
 
 ## Deployment
 The project includes support for:
-local Docker Compose development
-Kubernetes deployment
-additional cloud deployment configuration
+- local Docker Compose development
+- Kubernetes deployment
+- additional cloud deployment configuration
 
 For full deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
